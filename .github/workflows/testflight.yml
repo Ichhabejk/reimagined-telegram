@@ -1,0 +1,50 @@
+name: Publish to TestFlight
+
+on:
+  push: # Just temporary for testing
+    branches:
+      - 'feature/fastlane_ci'
+  #push:
+  #  paths:
+  #    - 'VERSION'
+
+jobs:
+  publish_apps:
+    runs-on: macOS-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Get yarn cache
+        id: yarn-cache
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - uses: actions/cache@v1
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Yarn dependencies
+        run: yarn
+
+      - name: Install Cocoapods
+        run: gem install cocoapods
+
+      - name: Install pods
+        run: bundle install && yarn pod-install
+
+      - name: fastlane ios beta
+        env:
+          # FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+          # FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          CERTS_REPO: ${{ secrets.CERTS_REPO }}
+          APP_ID_IOS: ${{ secrets.APP_ID_IOS }}
+          # SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+          LANG: en_CA.UTF-8
+          LC_ALL: en_CA.UTF-8
+        run: bundle exec fastlane ios beta
